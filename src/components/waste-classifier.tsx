@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useClassification } from "@/contexts/classification-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Camera, Loader2, Leaf, FileText, Recycle } from "lucide-react";
+import { Camera, Loader2, Leaf, FileText, Recycle, CameraOff } from "lucide-react";
 import type { WasteCategory } from "@/types";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
 
 const categories: WasteCategory[] = ["Plastic", "Paper", "Organic"];
 
@@ -34,41 +36,61 @@ export function WasteClassifier() {
   const [isCameraReady, setIsCameraReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isCameraOn, setIsCameraOn] = useState(true);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  useEffect(() => {
-    let stream: MediaStream | null = null;
-    async function setupCamera() {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" },
-          });
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            videoRef.current.onloadedmetadata = () => {
-              setIsCameraReady(true);
-            };
-          }
-        } catch (err) {
-          console.error("Error accessing camera: ", err);
-          setError(
-            "Could not access the camera. Please check permissions and try again."
-          );
-          setIsCameraReady(false);
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      setIsCameraReady(false);
+    }
+  }, []);
+
+  const startCamera = useCallback(async () => {
+    if (streamRef.current) {
+      stopCamera();
+    }
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      setError(null);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+        });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => {
+            setIsCameraReady(true);
+          };
         }
-      } else {
-        setError("Your browser does not support camera access.");
+      } catch (err) {
+        console.error("Error accessing camera: ", err);
+        setError(
+          "Could not access the camera. Please check permissions and try again."
+        );
         setIsCameraReady(false);
       }
+    } else {
+      setError("Your browser does not support camera access.");
+      setIsCameraReady(false);
     }
-    setupCamera();
+  }, [stopCamera]);
+
+  useEffect(() => {
+    if (isCameraOn) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
+      stopCamera();
     };
-  }, []);
+  }, [isCameraOn, startCamera, stopCamera]);
 
   const handleScan = () => {
     setIsScanning(true);
@@ -102,10 +124,16 @@ export function WasteClassifier() {
             autoPlay
             muted
             className={`w-full h-full object-cover transition-opacity duration-500 ${
-              isCameraReady ? "opacity-100" : "opacity-0"
+              isCameraReady && isCameraOn ? "opacity-100" : "opacity-0"
             }`}
           />
-          {!isCameraReady && !error && (
+          {!isCameraOn && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
+                <CameraOff className="h-8 w-8 mb-4" />
+                <p>Camera is off</p>
+            </div>
+          )}
+          {isCameraOn && !isCameraReady && !error && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
               <Loader2 className="h-8 w-8 animate-spin mb-4" />
               <p>Starting camera...</p>
@@ -119,9 +147,14 @@ export function WasteClassifier() {
           )}
         </div>
 
+        <div className="flex items-center space-x-2">
+            <Switch id="camera-toggle" checked={isCameraOn} onCheckedChange={setIsCameraOn} />
+            <Label htmlFor="camera-toggle">Camera On</Label>
+        </div>
+
         <Button
           onClick={handleScan}
-          disabled={isScanning || !isCameraReady}
+          disabled={isScanning || !isCameraReady || !isCameraOn}
           className="w-full max-w-xs transition-all duration-300"
           size="lg"
         >
