@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useClassification } from "@/contexts/classification-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Camera, Loader2, Leaf, Recycle, Biohazard, CameraOff, Sparkles } from "lucide-react";
+import { Camera, Loader2, Leaf, Recycle, Biohazard, CameraOff, Sparkles, AlertCircle } from "lucide-react";
 import type { ClassificationResult, WasteCategory } from "@/types";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
@@ -12,29 +12,33 @@ import { classifyWaste } from "@/ai/flows/classify-waste";
 import { useToast } from "@/hooks/use-toast";
 import { continuouslyClassifyWaste, type ContinuousClassificationOutput } from "@/ai/flows/continuously-classify-waste";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
 const categoryInfo: Record<
   WasteCategory,
-  { icon: React.ReactNode; description: string; examples: string, color: string }
+  { icon: React.ReactNode; description: string; examples: string, color: string; progressClass: string }
 > = {
   Biodegradable: {
-    icon: <Leaf className="h-8 w-8 text-green-500" />,
+    icon: <Leaf className="h-8 w-8 text-primary" />,
     description: "This is biodegradable waste. Please dump it in the GREEN bin.",
     examples: "e.g., Vegetable peels, leftover food, garden leaves, tea bags.",
-    color: "green-500",
+    color: "primary",
+    progressClass: "bg-primary",
   },
   Recyclable: {
     icon: <Recycle className="h-8 w-8 text-blue-500" />,
     description: "This is recyclable waste. Please dump it in the BLUE bin.",
     examples: "e.g., Plastic bottles, paper, cardboard, metal tins, glass.",
     color: "blue-500",
+    progressClass: "bg-blue-500",
   },
   "Domestic Hazardous": {
-    icon: <Biohazard className="h-8 w-8 text-red-500" />,
+    icon: <Biohazard className="h-8 w-8 text-destructive" />,
     description: "This is domestic hazardous waste. Please dump it in the RED bin.",
     examples: "e.g., Paint cans, used batteries, expired medicines, broken thermometers.",
-    color: "red-500"
+    color: "destructive",
+    progressClass: "bg-destructive",
   },
 };
 
@@ -43,9 +47,8 @@ export function WasteClassifier() {
   const { toast } = useToast();
   const [isScanning, setIsScanning] = useState(false);
   const [lastResult, setLastResult] = useState<Omit<ClassificationResult, 'id' | 'timestamp'> | null>(null);
-  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [error, setError] = useState<string | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
   const [continuousPredictions, setContinuousPredictions] = useState<ContinuousClassificationOutput | null>(null);
@@ -57,10 +60,9 @@ export function WasteClassifier() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-      setIsCameraReady(false);
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
     if (predictionIntervalRef.current) {
         clearInterval(predictionIntervalRef.current);
@@ -73,34 +75,35 @@ export function WasteClassifier() {
     if (streamRef.current) {
       stopCamera();
     }
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      setError(null);
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-        });
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.onloadedmetadata = () => {
-            setIsCameraReady(true);
-          };
-        }
-      } catch (err) {
-        console.error("Error accessing camera: ", err);
-        setError(
-          "Could not access the camera. Please check permissions and try again."
-        );
-        setIsCameraReady(false);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
       }
-    } else {
-      setError("Your browser does not support camera access.");
-      setIsCameraReady(false);
+      setHasCameraPermission(true);
+    } catch (err) {
+      console.error("Error accessing camera: ", err);
+      setHasCameraPermission(false);
+      setIsCameraOn(false);
     }
   }, [stopCamera]);
 
+  useEffect(() => {
+    if (isCameraOn) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+
+    return () => {
+      stopCamera();
+    };
+  }, [isCameraOn, startCamera, stopCamera]);
+
+
   const captureAndPredict = useCallback(async () => {
-    if (!videoRef.current || isPredicting) return;
+    if (!videoRef.current || isPredicting || !videoRef.current.srcObject) return;
   
     setIsPredicting(true);
     const canvas = document.createElement('canvas');
@@ -126,20 +129,9 @@ export function WasteClassifier() {
     }
   }, [isPredicting]);
 
-  useEffect(() => {
-    if (isCameraOn) {
-      startCamera();
-    } else {
-      stopCamera();
-    }
-
-    return () => {
-      stopCamera();
-    };
-  }, [isCameraOn, startCamera, stopCamera]);
 
   useEffect(() => {
-    if (isCameraReady && isCameraOn) {
+    if (videoRef.current && videoRef.current.srcObject && isCameraOn) {
       predictionIntervalRef.current = setInterval(captureAndPredict, 2000); // Predict every 2 seconds
     } else {
       if (predictionIntervalRef.current) {
@@ -152,11 +144,11 @@ export function WasteClassifier() {
             clearInterval(predictionIntervalRef.current);
         }
     };
-}, [isCameraReady, isCameraOn, captureAndPredict]);
+  }, [isCameraOn, captureAndPredict]);
 
 
   const handleScan = async () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || !videoRef.current.srcObject) return;
     setIsScanning(true);
     setLastResult(null);
 
@@ -188,16 +180,16 @@ export function WasteClassifier() {
   };
 
   const getResultCardClasses = (category: WasteCategory | null) => {
-    if (!category) return "bg-primary/10 border-primary/20";
+    if (!category) return "bg-card border";
     switch (category) {
       case "Biodegradable":
-        return "bg-green-500/10 border-green-500/20";
+        return "bg-primary/10 border-primary/20";
       case "Recyclable":
         return "bg-blue-500/10 border-blue-500/20";
       case "Domestic Hazardous":
-        return "bg-red-500/10 border-red-500/20";
+        return "bg-destructive/10 border-destructive/20";
       default:
-        return "bg-primary/10 border-primary/20";
+        return "bg-card border";
     }
   }
 
@@ -217,7 +209,7 @@ export function WasteClassifier() {
                 <span className="font-medium">{category}</span>
                 <span className="text-muted-foreground">{Math.round(percentage * 100)}%</span>
               </div>
-              <Progress value={percentage * 100} className={`h-2 [&>div]:bg-${categoryInfo[category].color}`} />
+              <Progress value={percentage * 100} className={`h-2 ${categoryInfo[category].progressClass}`} />
             </div>
           ))}
         </div>
@@ -243,25 +235,31 @@ export function WasteClassifier() {
             autoPlay
             muted
             className={`w-full h-full object-cover transition-opacity duration-500 ${
-              isCameraReady && isCameraOn ? "opacity-100" : "opacity-0"
+              isCameraOn && hasCameraPermission ? "opacity-100" : "opacity-0"
             }`}
           />
-          {!isCameraOn && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
-                <CameraOff className="h-8 w-8 mb-4" />
-                <p>Camera is off</p>
+          {(!isCameraOn || hasCameraPermission === false) && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground p-4">
+              {hasCameraPermission === false ? (
+                 <Alert variant="destructive" className="max-w-sm">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Camera Access Denied</AlertTitle>
+                    <AlertDescription>
+                      Please grant camera permissions in your browser settings to use this feature.
+                    </AlertDescription>
+                  </Alert>
+              ) : (
+                <>
+                  <CameraOff className="h-8 w-8 mb-4" />
+                  <p>Camera is off</p>
+                </>
+              )}
             </div>
           )}
-          {isCameraOn && !isCameraReady && !error && (
+          {isCameraOn && hasCameraPermission === null && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
               <Loader2 className="h-8 w-8 animate-spin mb-4" />
               <p>Starting camera...</p>
-            </div>
-          )}
-          {error && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-destructive p-4">
-              <Camera className="h-8 w-8 mb-4" />
-              <p className="text-center font-medium">{error}</p>
             </div>
           )}
         </div>
@@ -271,12 +269,11 @@ export function WasteClassifier() {
             <Label htmlFor="camera-toggle">Camera On</Label>
         </div>
         
-        {isCameraOn && renderPredictions()}
-
+        {isCameraOn && hasCameraPermission && renderPredictions()}
 
         <Button
           onClick={handleScan}
-          disabled={isScanning || !isCameraReady || !isCameraOn}
+          disabled={isScanning || !isCameraOn || !hasCameraPermission}
           className="w-full max-w-xs transition-all duration-300"
           size="lg"
         >
