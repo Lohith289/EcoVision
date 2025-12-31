@@ -12,6 +12,7 @@ import React, {
 interface AddClassificationData {
   itemName: string;
   category: ClassificationResult['category'];
+  recyclingTips?: string;
 }
 
 interface ClassificationContextType {
@@ -39,6 +40,7 @@ export function ClassificationProvider({
         itemName: data.itemName,
         category: data.category,
         timestamp: Date.now(),
+        recyclingTips: data.recyclingTips,
       };
       setHistory((prev) => [newItem, ...prev]);
       toast({

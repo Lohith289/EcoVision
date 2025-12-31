@@ -25,6 +25,7 @@ const ClassifyWasteOutputSchema = z.object({
   category: z
     .enum(["Biodegradable", "Recyclable", "Domestic Hazardous"])
     .describe("The classification category of the waste item."),
+  recyclingTips: z.string().optional().describe("A few ideas on how to recycle or biodegrade the waste item yourself. Only provide for 'Recyclable' and 'Biodegradable' items."),
 });
 export type ClassifyWasteOutput = z.infer<typeof ClassifyWasteOutputSchema>;
 
@@ -45,6 +46,9 @@ const prompt = ai.definePrompt({
   - Biodegradable (Green Bin) examples: Vegetable peels, leftover food, meat/bones, garden leaves, tea bags, coconut shells.
   - Recyclable (Blue Bin) examples: Plastic bottles, paper, cardboard, metal tins, glass, rubber, thermocol.
   - Domestic Hazardous (Red Bin) examples: Paint cans, insecticide spray, used batteries, tube lights, expired medicines, broken thermometers.
+
+  If the item is 'Recyclable' or 'Biodegradable', provide a few creative and practical ideas for how someone could recycle or biodegrade the item themselves at home.
+  Do not provide tips for 'Domestic Hazardous' waste.
   
   Image: {{media url=imageDataUri}}`,
 });

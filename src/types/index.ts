@@ -8,4 +8,5 @@ export interface ClassificationResult {
   itemName: string;
   category: WasteCategory;
   timestamp: number;
+  recyclingTips?: string;
 }

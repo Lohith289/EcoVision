@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useClassification } from "@/contexts/classification-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Camera, Loader2, Leaf, Recycle, Biohazard, CameraOff } from "lucide-react";
+import { Camera, Loader2, Leaf, Recycle, Biohazard, CameraOff, Sparkles } from "lucide-react";
 import type { ClassificationResult, WasteCategory } from "@/types";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
@@ -306,6 +306,12 @@ export function WasteClassifier() {
              <p className="text-xs text-muted-foreground mt-2">
               {categoryInfo[lastResult.category].examples}
             </p>
+            {lastResult.recyclingTips && (
+              <div className="mt-4 text-left p-3 bg-background/50 rounded-md">
+                 <h4 className="font-semibold text-sm mb-2 flex items-center gap-2 justify-center"><Sparkles className="w-4 h-4 text-accent"/> DIY Ideas</h4>
+                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{lastResult.recyclingTips}</p>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
