@@ -1,4 +1,7 @@
-export type WasteCategory = "Plastic" | "Paper" | "Organic";
+export type WasteCategory =
+  | "Biodegradable"
+  | "Recyclable"
+  | "Domestic Hazardous";
 
 export interface ClassificationResult {
   id: string;

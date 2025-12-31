@@ -4,28 +4,31 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useClassification } from "@/contexts/classification-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Camera, Loader2, Leaf, FileText, Recycle, CameraOff } from "lucide-react";
+import { Camera, Loader2, Leaf, Recycle, Biohazard, CameraOff } from "lucide-react";
 import type { WasteCategory } from "@/types";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
 
-const categories: WasteCategory[] = ["Plastic", "Paper", "Organic"];
+const categories: WasteCategory[] = ["Biodegradable", "Recyclable", "Domestic Hazardous"];
 
 const categoryInfo: Record<
   WasteCategory,
-  { icon: React.ReactNode; description: string }
+  { icon: React.ReactNode; description: string; examples: string }
 > = {
-  Plastic: {
-    icon: <Recycle className="h-8 w-8 text-primary" />,
-    description: "This item appears to be plastic. Please recycle it if possible.",
+  Biodegradable: {
+    icon: <Leaf className="h-8 w-8 text-green-500" />,
+    description: "This is biodegradable waste. Please dump it in the GREEN bin.",
+    examples: "e.g., Vegetable peels, leftover food, garden leaves, tea bags."
   },
-  Paper: {
-    icon: <FileText className="h-8 w-8 text-primary" />,
-    description: "This item appears to be paper. Please recycle it.",
+  Recyclable: {
+    icon: <Recycle className="h-8 w-8 text-blue-500" />,
+    description: "This is recyclable waste. Please dump it in the BLUE bin.",
+    examples: "e.g., Plastic bottles, paper, cardboard, metal tins, glass."
   },
-  Organic: {
-    icon: <Leaf className="h-8 w-8 text-primary" />,
-    description: "This item appears to be organic waste. You can compost it.",
+  "Domestic Hazardous": {
+    icon: <Biohazard className="h-8 w-8 text-red-500" />,
+    description: "This is domestic hazardous waste. Please dump it in the RED bin.",
+    examples: "e.g., Paint cans, used batteries, expired medicines, broken thermometers."
   },
 };
 
@@ -106,6 +109,20 @@ export function WasteClassifier() {
     }, 2000);
   };
 
+  const getResultCardClasses = (category: WasteCategory | null) => {
+    if (!category) return "bg-primary/10 border-primary/20";
+    switch (category) {
+      case "Biodegradable":
+        return "bg-green-500/10 border-green-500/20";
+      case "Recyclable":
+        return "bg-blue-500/10 border-blue-500/20";
+      case "Domestic Hazardous":
+        return "bg-red-500/10 border-red-500/20";
+      default:
+        return "bg-primary/10 border-primary/20";
+    }
+  }
+
   return (
     <Card className="w-full max-w-2xl shadow-2xl overflow-hidden">
       <CardHeader className="text-center">
@@ -172,13 +189,16 @@ export function WasteClassifier() {
         </Button>
 
         {lastResult && (
-          <div className="text-center p-4 bg-primary/10 rounded-lg w-full border border-primary/20 animate-in fade-in-50 slide-in-from-bottom-5">
+          <div className={`text-center p-4 rounded-lg w-full border animate-in fade-in-50 slide-in-from-bottom-5 ${getResultCardClasses(lastResult)}`}>
             <div className="flex justify-center mb-2">
               {categoryInfo[lastResult].icon}
             </div>
             <h3 className="text-xl font-bold">Detected: {lastResult}</h3>
             <p className="text-muted-foreground">
               {categoryInfo[lastResult].description}
+            </p>
+             <p className="text-xs text-muted-foreground mt-2">
+              {categoryInfo[lastResult].examples}
             </p>
           </div>
         )}

@@ -9,7 +9,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { Leaf, FileText, Recycle, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { Leaf, Recycle, Biohazard, Trash2, Sparkles, Loader2 } from "lucide-react";
 import type { WasteCategory } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 import React, { useState } from "react";
@@ -17,9 +17,9 @@ import { summarizeClassificationHistory } from "@/ai/flows/summarize-classificat
 import { useToast } from "@/hooks/use-toast";
 
 const categoryIcons: Record<WasteCategory, React.ReactElement> = {
-  Plastic: <Recycle />,
-  Paper: <FileText />,
-  Organic: <Leaf />,
+  Biodegradable: <Leaf />,
+  Recyclable: <Recycle />,
+  "Domestic Hazardous": <Biohazard />,
 };
 
 export function ClassificationHistory() {
