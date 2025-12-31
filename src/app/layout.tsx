@@ -39,7 +39,7 @@ export default function RootLayout({
         <ThemeProvider storageKey="ecovision-theme">
           <ClassificationProvider>
             <SidebarProvider>
-              <Sidebar side="right">
+              <Sidebar side="left">
                 <ClassificationHistory />
               </Sidebar>
               <SidebarInset>
