@@ -49,6 +49,7 @@ export function WasteClassifier() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
+  const [isCooldown, setIsCooldown] = useState(false);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -119,6 +120,8 @@ export function WasteClassifier() {
       });
     } finally {
       setIsScanning(false);
+      setIsCooldown(true);
+      setTimeout(() => setIsCooldown(false), 3000);
     }
   };
 
@@ -190,7 +193,7 @@ export function WasteClassifier() {
         
         <Button
           onClick={handleScan}
-          disabled={isScanning || !isCameraOn || !hasCameraPermission}
+          disabled={isScanning || !isCameraOn || !hasCameraPermission || isCooldown}
           className="w-full max-w-xs transition-all duration-300"
           size="lg"
         >
@@ -199,6 +202,8 @@ export function WasteClassifier() {
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Scanning...
             </>
+          ) : isCooldown ? (
+            "Ready to scan again"
           ) : (
             <>
               <Camera className="mr-2 h-4 w-4" />
