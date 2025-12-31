@@ -10,8 +10,6 @@ import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
 import { classifyWaste } from "@/ai/flows/classify-waste";
 import { useToast } from "@/hooks/use-toast";
-import { continuouslyClassifyWaste, type ContinuousClassificationOutput } from "@/ai/flows/continuously-classify-waste";
-import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
@@ -51,10 +49,6 @@ export function WasteClassifier() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
-  const [continuousPredictions, setContinuousPredictions] = useState<ContinuousClassificationOutput | null>(null);
-  const [isPredicting, setIsPredicting] = useState(false);
-  const predictionIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
@@ -64,11 +58,6 @@ export function WasteClassifier() {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    if (predictionIntervalRef.current) {
-        clearInterval(predictionIntervalRef.current);
-        predictionIntervalRef.current = null;
-    }
-    setContinuousPredictions(null);
   }, []);
 
   const startCamera = useCallback(async () => {
@@ -100,52 +89,6 @@ export function WasteClassifier() {
       stopCamera();
     };
   }, [isCameraOn, startCamera, stopCamera]);
-
-
-  const captureAndPredict = useCallback(async () => {
-    if (!videoRef.current || isPredicting || !videoRef.current.srcObject) return;
-  
-    setIsPredicting(true);
-    const canvas = document.createElement('canvas');
-    const video = videoRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      setIsPredicting(false);
-      return;
-    }
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imageDataUri = canvas.toDataURL('image/jpeg', 0.5); // Use lower quality for performance
-  
-    try {
-      const result = await continuouslyClassifyWaste(imageDataUri);
-      setContinuousPredictions(result);
-    } catch (e) {
-      // Don't show toast for continuous prediction errors to avoid spamming
-      console.error("Continuous prediction failed", e);
-    } finally {
-      setIsPredicting(false);
-    }
-  }, [isPredicting]);
-
-
-  useEffect(() => {
-    if (videoRef.current && videoRef.current.srcObject && isCameraOn) {
-      predictionIntervalRef.current = setInterval(captureAndPredict, 5000); // Predict every 5 seconds
-    } else {
-      if (predictionIntervalRef.current) {
-        clearInterval(predictionIntervalRef.current);
-        predictionIntervalRef.current = null;
-      }
-    }
-    return () => {
-        if (predictionIntervalRef.current) {
-            clearInterval(predictionIntervalRef.current);
-        }
-    };
-  }, [isCameraOn, captureAndPredict]);
-
 
   const handleScan = async () => {
     if (!videoRef.current || !videoRef.current.srcObject) return;
@@ -192,30 +135,6 @@ export function WasteClassifier() {
         return "bg-card border";
     }
   }
-
-  const renderPredictions = () => {
-    if (!continuousPredictions) return null;
-  
-    const sortedPredictions = Object.entries(continuousPredictions)
-      .sort(([, a], [, b]) => b - a) as [WasteCategory, number][];
-  
-    return (
-      <div className="w-full max-w-md p-4 rounded-lg border bg-muted/50">
-        <h4 className="text-sm font-semibold mb-2 text-center">Live Prediction</h4>
-        <div className="space-y-2">
-          {sortedPredictions.map(([category, percentage]) => (
-            <div key={category} className="space-y-1">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-medium">{category}</span>
-                <span className="text-muted-foreground">{Math.round(percentage * 100)}%</span>
-              </div>
-              <Progress value={percentage * 100} className={`h-2 ${categoryInfo[category].progressClass}`} />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
 
   return (
     <Card className="w-full max-w-2xl shadow-2xl overflow-hidden">
@@ -269,8 +188,6 @@ export function WasteClassifier() {
             <Label htmlFor="camera-toggle">Camera On</Label>
         </div>
         
-        {isCameraOn && hasCameraPermission && renderPredictions()}
-
         <Button
           onClick={handleScan}
           disabled={isScanning || !isCameraOn || !hasCameraPermission}
