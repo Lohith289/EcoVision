@@ -42,9 +42,9 @@ const prompt = ai.definePrompt({
   
   Determine the specific item name and its category from the following options: Biodegradable, Recyclable, or Domestic Hazardous.
   
-  - Biodegradable examples: Vegetable peels, leftover food, meat/bones, garden leaves, tea bags, coconut shells.
-  - Recyclable examples: Plastic bottles, paper, cardboard, metal tins, glass, rubber, thermocol.
-  - Domestic Hazardous examples: Paint cans, insecticide spray, used batteries, tube lights, expired medicines, broken thermometers.
+  - Biodegradable (Green Bin) examples: Vegetable peels, leftover food, meat/bones, garden leaves, tea bags, coconut shells.
+  - Recyclable (Blue Bin) examples: Plastic bottles, paper, cardboard, metal tins, glass, rubber, thermocol.
+  - Domestic Hazardous (Red Bin) examples: Paint cans, insecticide spray, used batteries, tube lights, expired medicines, broken thermometers.
   
   Image: {{media url=imageDataUri}}`,
 });
