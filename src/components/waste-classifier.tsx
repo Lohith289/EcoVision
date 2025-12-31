@@ -1,0 +1,155 @@
+"use client";
+
+import React, { useState, useRef, useEffect } from "react";
+import { useClassification } from "@/contexts/classification-context";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Camera, Loader2, Leaf, FileText, Recycle } from "lucide-react";
+import type { WasteCategory } from "@/types";
+
+const categories: WasteCategory[] = ["Plastic", "Paper", "Organic"];
+
+const categoryInfo: Record<
+  WasteCategory,
+  { icon: React.ReactNode; description: string }
+> = {
+  Plastic: {
+    icon: <Recycle className="h-8 w-8 text-primary" />,
+    description: "This item appears to be plastic. Please recycle it if possible.",
+  },
+  Paper: {
+    icon: <FileText className="h-8 w-8 text-primary" />,
+    description: "This item appears to be paper. Please recycle it.",
+  },
+  Organic: {
+    icon: <Leaf className="h-8 w-8 text-primary" />,
+    description: "This item appears to be organic waste. You can compost it.",
+  },
+};
+
+export function WasteClassifier() {
+  const { addClassification } = useClassification();
+  const [isScanning, setIsScanning] = useState(false);
+  const [lastResult, setLastResult] = useState<WasteCategory | null>(null);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    async function setupCamera() {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+          });
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.onloadedmetadata = () => {
+              setIsCameraReady(true);
+            };
+          }
+        } catch (err) {
+          console.error("Error accessing camera: ", err);
+          setError(
+            "Could not access the camera. Please check permissions and try again."
+          );
+          setIsCameraReady(false);
+        }
+      } else {
+        setError("Your browser does not support camera access.");
+        setIsCameraReady(false);
+      }
+    }
+    setupCamera();
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  const handleScan = () => {
+    setIsScanning(true);
+    setLastResult(null);
+
+    // Mock classification since we cannot install tensorflow.js
+    setTimeout(() => {
+      const randomCategory =
+        categories[Math.floor(Math.random() * categories.length)];
+      addClassification(randomCategory);
+      setLastResult(randomCategory);
+      setIsScanning(false);
+    }, 2000);
+  };
+
+  return (
+    <Card className="w-full max-w-2xl shadow-2xl overflow-hidden">
+      <CardHeader className="text-center">
+        <CardTitle className="font-headline text-3xl md:text-4xl">
+          EcoVision
+        </CardTitle>
+        <CardDescription>
+            Point your camera at a piece of waste and scan it.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col items-center gap-6 p-4 md:p-6">
+        <div className="relative w-full aspect-video bg-muted rounded-lg overflow-hidden border shadow-inner">
+          <video
+            ref={videoRef}
+            playsInline
+            autoPlay
+            muted
+            className={`w-full h-full object-cover transition-opacity duration-500 ${
+              isCameraReady ? "opacity-100" : "opacity-0"
+            }`}
+          />
+          {!isCameraReady && !error && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
+              <Loader2 className="h-8 w-8 animate-spin mb-4" />
+              <p>Starting camera...</p>
+            </div>
+          )}
+          {error && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-destructive p-4">
+              <Camera className="h-8 w-8 mb-4" />
+              <p className="text-center font-medium">{error}</p>
+            </div>
+          )}
+        </div>
+
+        <Button
+          onClick={handleScan}
+          disabled={isScanning || !isCameraReady}
+          className="w-full max-w-xs transition-all duration-300"
+          size="lg"
+        >
+          {isScanning ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Scanning...
+            </>
+          ) : (
+            <>
+              <Camera className="mr-2 h-4 w-4" />
+              Scan Item
+            </>
+          )}
+        </Button>
+
+        {lastResult && (
+          <div className="text-center p-4 bg-primary/10 rounded-lg w-full border border-primary/20 animate-in fade-in-50 slide-in-from-bottom-5">
+            <div className="flex justify-center mb-2">
+              {categoryInfo[lastResult].icon}
+            </div>
+            <h3 className="text-xl font-bold">Detected: {lastResult}</h3>
+            <p className="text-muted-foreground">
+              {categoryInfo[lastResult].description}
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
