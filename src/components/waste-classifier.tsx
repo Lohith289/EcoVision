@@ -36,7 +36,7 @@ export function WasteClassifier() {
   const [isCameraReady, setIsCameraReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isCameraOn, setIsCameraOn] = useState(true);
+  const [isCameraOn, setIsCameraOn] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
 
   const stopCamera = useCallback(() => {
