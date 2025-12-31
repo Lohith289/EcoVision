@@ -5,11 +5,11 @@ import { useClassification } from "@/contexts/classification-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Camera, Loader2, Leaf, Recycle, Biohazard, CameraOff } from "lucide-react";
-import type { WasteCategory } from "@/types";
+import type { ClassificationResult, WasteCategory } from "@/types";
 import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
-
-const categories: WasteCategory[] = ["Biodegradable", "Recyclable", "Domestic Hazardous"];
+import { classifyWaste } from "@/ai/flows/classify-waste";
+import { useToast } from "@/hooks/use-toast";
 
 const categoryInfo: Record<
   WasteCategory,
@@ -34,8 +34,9 @@ const categoryInfo: Record<
 
 export function WasteClassifier() {
   const { addClassification } = useClassification();
+  const { toast } = useToast();
   const [isScanning, setIsScanning] = useState(false);
-  const [lastResult, setLastResult] = useState<WasteCategory | null>(null);
+  const [lastResult, setLastResult] = useState<Omit<ClassificationResult, 'id' | 'timestamp'> | null>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -95,18 +96,36 @@ export function WasteClassifier() {
     };
   }, [isCameraOn, startCamera, stopCamera]);
 
-  const handleScan = () => {
+  const handleScan = async () => {
+    if (!videoRef.current) return;
     setIsScanning(true);
     setLastResult(null);
 
-    // Mock classification since we cannot install tensorflow.js
-    setTimeout(() => {
-      const randomCategory =
-        categories[Math.floor(Math.random() * categories.length)];
-      addClassification(randomCategory);
-      setLastResult(randomCategory);
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        setIsScanning(false);
+        return;
+    }
+    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+    const imageDataUri = canvas.toDataURL('image/jpeg');
+
+    try {
+      const result = await classifyWaste(imageDataUri);
+      addClassification(result);
+      setLastResult(result);
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Classification Failed",
+        description: "Could not identify the item. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsScanning(false);
-    }, 2000);
+    }
   };
 
   const getResultCardClasses = (category: WasteCategory | null) => {
@@ -189,16 +208,17 @@ export function WasteClassifier() {
         </Button>
 
         {lastResult && (
-          <div className={`text-center p-4 rounded-lg w-full border animate-in fade-in-50 slide-in-from-bottom-5 ${getResultCardClasses(lastResult)}`}>
+          <div className={`text-center p-4 rounded-lg w-full border animate-in fade-in-50 slide-in-from-bottom-5 ${getResultCardClasses(lastResult.category)}`}>
             <div className="flex justify-center mb-2">
-              {categoryInfo[lastResult].icon}
+              {categoryInfo[lastResult.category].icon}
             </div>
-            <h3 className="text-xl font-bold">Detected: {lastResult}</h3>
+            <h3 className="text-xl font-bold">Detected: {lastResult.itemName}</h3>
+            <p className="font-semibold text-base mb-1">Category: {lastResult.category}</p>
             <p className="text-muted-foreground">
-              {categoryInfo[lastResult].description}
+              {categoryInfo[lastResult.category].description}
             </p>
              <p className="text-xs text-muted-foreground mt-2">
-              {categoryInfo[lastResult].examples}
+              {categoryInfo[lastResult.category].examples}
             </p>
           </div>
         )}

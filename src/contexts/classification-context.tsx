@@ -1,6 +1,6 @@
 "use client";
 
-import type { ClassificationResult, WasteCategory } from "@/types";
+import type { ClassificationResult } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import React, {
   createContext,
@@ -9,9 +9,14 @@ import React, {
   useCallback,
 } from "react";
 
+interface AddClassificationData {
+  itemName: string;
+  category: ClassificationResult['category'];
+}
+
 interface ClassificationContextType {
   history: ClassificationResult[];
-  addClassification: (category: WasteCategory) => void;
+  addClassification: (data: AddClassificationData) => void;
   clearHistory: () => void;
 }
 
@@ -28,16 +33,17 @@ export function ClassificationProvider({
   const { toast } = useToast();
 
   const addClassification = useCallback(
-    (category: WasteCategory) => {
+    (data: AddClassificationData) => {
       const newItem: ClassificationResult = {
         id: crypto.randomUUID(),
-        category,
+        itemName: data.itemName,
+        category: data.category,
         timestamp: Date.now(),
       };
       setHistory((prev) => [newItem, ...prev]);
       toast({
         title: "Item Classified!",
-        description: `Detected as: ${category}`,
+        description: `${data.itemName} is ${data.category}.`,
       });
     },
     [toast]

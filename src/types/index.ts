@@ -5,6 +5,7 @@ export type WasteCategory =
 
 export interface ClassificationResult {
   id: string;
+  itemName: string;
   category: WasteCategory;
   timestamp: number;
 }

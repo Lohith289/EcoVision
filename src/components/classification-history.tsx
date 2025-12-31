@@ -89,9 +89,9 @@ export function ClassificationHistory() {
                     })}
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold">{item.category}</p>
+                    <p className="font-semibold">{item.itemName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(item.timestamp), {
+                      {item.category} &bull; {formatDistanceToNow(new Date(item.timestamp), {
                         addSuffix: true,
                       })}
                     </p>
