@@ -36,9 +36,9 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased min-h-screen bg-background text-foreground">
-        <ThemeProvider storageKey="ecovision-theme">
+        <ThemeProvider storageKey="ecovision-theme" defaultTheme="dark">
           <ClassificationProvider>
-            <SidebarProvider>
+            <SidebarProvider defaultOpen={false}>
               <Sidebar side="left">
                 <ClassificationHistory />
               </Sidebar>
