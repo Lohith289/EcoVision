@@ -132,7 +132,7 @@ export function WasteClassifier() {
 
   useEffect(() => {
     if (videoRef.current && videoRef.current.srcObject && isCameraOn) {
-      predictionIntervalRef.current = setInterval(captureAndPredict, 2000); // Predict every 2 seconds
+      predictionIntervalRef.current = setInterval(captureAndPredict, 5000); // Predict every 5 seconds
     } else {
       if (predictionIntervalRef.current) {
         clearInterval(predictionIntervalRef.current);
